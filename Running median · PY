@@ -1,0 +1,85 @@
+import heapq
+import random
+import time
+import matplotlib.pyplot as plt
+
+
+class RunningMedian:
+    """Two heaps: max-heap for the lower half, min-heap for the upper half."""
+
+    def __init__(self):
+        self.lower = []   # max-heap (values stored negated)
+        self.upper = []   # min-heap
+
+    def add(self, x):
+        # insert into the correct heap
+        if not self.lower or x <= -self.lower[0]:
+            heapq.heappush(self.lower, -x)
+        else:
+            heapq.heappush(self.upper, x)
+        # rebalance so sizes differ by at most 1
+        if len(self.lower) > len(self.upper) + 1:
+            heapq.heappush(self.upper, -heapq.heappop(self.lower))
+        elif len(self.upper) > len(self.lower):
+            heapq.heappush(self.lower, -heapq.heappop(self.upper))
+
+    def median(self):
+        if len(self.lower) > len(self.upper):
+            return -self.lower[0]
+        return (-self.lower[0] + self.upper[0]) / 2
+
+
+def median_by_sorting(stream):
+    """Extension: sort the prefix every time, Theta(n^2 log n) overall."""
+    result = []
+    for i in range(1, len(stream) + 1):
+        s = sorted(stream[:i])
+        mid = len(s) // 2
+        result.append(s[mid] if len(s) % 2 else (s[mid - 1] + s[mid]) / 2)
+    return result
+
+
+def median_by_heaps(stream):
+    rm = RunningMedian()
+    result = []
+    for x in stream:
+        rm.add(x)
+        result.append(rm.median())
+    return result
+
+
+# ---- example from the assignment
+example = [5, 15, 1, 3]
+rm = RunningMedian()
+for x in example:
+    rm.add(x)
+    print(f"After {x}: median {rm.median():g}")
+
+# ---- correctness test against the sorting version
+for _ in range(200):
+    data = [random.randint(-100, 100) for _ in range(random.randint(1, 60))]
+    assert median_by_heaps(data) == median_by_sorting(data)
+print("Correctness test passed")
+
+# ---- timing comparison
+sizes = [500, 1000, 2000, 4000, 8000]
+t_heap, t_sort = [], []
+for n in sizes:
+    data = [random.randint(0, 10**6) for _ in range(n)]
+    start = time.perf_counter()
+    median_by_heaps(data)
+    t_heap.append(time.perf_counter() - start)
+    start = time.perf_counter()
+    median_by_sorting(data)
+    t_sort.append(time.perf_counter() - start)
+    print(f"n={n:5d}  heaps={t_heap[-1]:.4f}s  sorting={t_sort[-1]:.4f}s")
+
+plt.plot(sizes, t_heap, "o-", label="two heaps  O(n log n)")
+plt.plot(sizes, t_sort, "s-", label="sort every time  O(n^2 log n)")
+plt.xlabel("stream length n")
+plt.ylabel("time (s)")
+plt.title("Running median")
+plt.legend()
+plt.grid(alpha=0.3)
+plt.savefig("running_median_plot.png", dpi=150)
+plt.show()

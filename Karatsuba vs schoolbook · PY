@@ -1,0 +1,71 @@
+import random
+import timeit
+import matplotlib.pyplot as plt
+
+
+def schoolbook(x, y):
+    """Grade-school multiplication digit by digit: O(n^2)."""
+    a = [int(d) for d in str(x)][::-1]
+    b = [int(d) for d in str(y)][::-1]
+    result = [0] * (len(a) + len(b))
+    for i, da in enumerate(a):
+        carry = 0
+        for j, db in enumerate(b):
+            cur = result[i + j] + da * db + carry
+            result[i + j] = cur % 10
+            carry = cur // 10
+        result[i + len(b)] += carry
+    return int("".join(map(str, result[::-1])))
+
+
+def karatsuba(x, y):
+    """Karatsuba multiplication: O(n^1.585)."""
+    if x < 10 or y < 10:
+        return x * y
+    m = max(len(str(x)), len(str(y))) // 2
+    p = 10 ** m
+    x1, x0 = divmod(x, p)
+    y1, y0 = divmod(y, p)
+    z2 = karatsuba(x1, y1)
+    z0 = karatsuba(x0, y0)
+    z1 = karatsuba(x1 + x0, y1 + y0) - z2 - z0
+    return z2 * p * p + z1 * p + z0
+
+
+def random_number(n):
+    return random.randint(10 ** (n - 1), 10 ** n - 1)
+
+
+sizes = [2, 4, 8, 16, 32, 48, 64, 96, 128, 256, 512, 1024]
+t_school, t_kara = [], []
+
+for n in sizes:
+    x, y = random_number(n), random_number(n)
+    assert schoolbook(x, y) == karatsuba(x, y) == x * y   # correctness check
+    runs = max(1, 2000 // n)
+    ts = min(timeit.repeat(lambda: schoolbook(x, y), number=runs, repeat=5)) / runs
+    tk = min(timeit.repeat(lambda: karatsuba(x, y), number=runs, repeat=5)) / runs
+    t_school.append(ts)
+    t_kara.append(tk)
+    print(f"n={n:5d}  school-book={ts:.6f}s  karatsuba={tk:.6f}s")
+
+# crossover: smallest size from which Karatsuba stays faster for all larger sizes
+crossover = None
+for i in range(len(sizes) - 1, -1, -1):
+    if t_kara[i] < t_school[i]:
+        crossover = sizes[i]
+    else:
+        break
+print("Crossover size (digits):", crossover)
+
+plt.loglog(sizes, t_school, "o-", label="school-book")
+plt.loglog(sizes, t_kara, "s-", label="Karatsuba")
+if crossover:
+    plt.axvline(crossover, color="gray", linestyle="--", label=f"crossover ~ {crossover} digits")
+plt.xlabel("number of digits n")
+plt.ylabel("time (s)")
+plt.title("Karatsuba vs school-book multiplication")
+plt.legend()
+plt.grid(alpha=0.3, which="both")
+plt.savefig("karatsuba_plot.png", dpi=150)
+plt.show()
