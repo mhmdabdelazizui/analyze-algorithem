@@ -1,0 +1,52 @@
+import random
+import time
+import matplotlib.pyplot as plt
+
+
+def insertion_sort(a):
+    """Sort list a in place. Returns (comparisons, shifts)."""
+    comparisons = shifts = 0
+    for i in range(1, len(a)):
+        key = a[i]
+        j = i - 1
+        while j >= 0:
+            comparisons += 1
+            if a[j] > key:
+                a[j + 1] = a[j]
+                shifts += 1
+                j -= 1
+            else:
+                break
+        a[j + 1] = key
+    return comparisons, shifts
+
+
+def make_input(kind, n):
+    a = list(range(n))
+    if kind == "reverse":
+        a.reverse()
+    elif kind == "random":
+        random.shuffle(a)
+    return a
+
+
+sizes = [100] + list(range(500, 5001, 500))
+kinds = ["sorted", "reverse", "random"]
+
+for kind in kinds:
+    times = []
+    for n in sizes:
+        data = make_input(kind, n)
+        start = time.perf_counter()
+        comps, shifts = insertion_sort(data)
+        times.append(time.perf_counter() - start)
+    print(f"{kind:8s} n={sizes[-1]}: comparisons={comps}, shifts={shifts}, time={times[-1]:.4f}s")
+    plt.plot(sizes, times, "o-", label=kind)
+
+plt.xlabel("n")
+plt.ylabel("time (s)")
+plt.title("Insertion sort running time")
+plt.legend()
+plt.grid(alpha=0.3)
+plt.savefig("insertion_sort_plot.png", dpi=150)
+plt.show()
